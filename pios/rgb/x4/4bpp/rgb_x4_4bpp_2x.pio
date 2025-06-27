@@ -1,0 +1,15 @@
+.program rgb_x4_4bpp_2x
+.wrap_target
+
+mov x, isr
+set pins, 0
+
+wait 1 irq 1 [6]
+
+colorout:
+	pull block
+	out pins, 4	[3]
+	out pins, 4	[1]
+	jmp x-- colorout
+
+.wrap

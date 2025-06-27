@@ -1,0 +1,29 @@
+.program vsync_600p
+.side_set 1 opt
+
+.wrap_target
+
+mov x, osr
+active:
+    wait 1 irq 2
+    irq 1
+    jmp x-- active
+
+frontporch:
+    wait 1 irq 2
+    wait 1 irq 2
+    wait 1 irq 2
+
+set y, 3 side 1
+irq 0
+syncpulse:
+    wait 1 irq 2
+    jmp y-- syncpulse
+
+set y, 20 side 0
+
+backporch:
+    wait 1 irq 2
+    jmp y-- backporch
+
+.wrap

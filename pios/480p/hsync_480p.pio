@@ -1,0 +1,21 @@
+.program hsync_480p
+
+.wrap_target         
+mov x, osr
+activeporch:
+   jmp x-- activeporch
+
+set pins, 0 [10]
+
+set y, 6
+pulse:
+    jmp y-- pulse [11]
+
+set pins, 1 [4]
+
+set y, 5 [2]
+
+backporch:
+    jmp y-- backporch [5]
+    irq 2 [3]
+.wrap

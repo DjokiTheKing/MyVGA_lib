@@ -1,0 +1,28 @@
+.program vsync_480p
+.side_set 1 opt
+
+.wrap_target
+
+mov x, osr
+active:
+    wait 1 irq 2
+    irq 1
+    jmp x-- active
+
+set y, 9 side 0
+frontporch:
+    wait 1 irq 2
+
+set y, 1 side 0
+irq 0
+syncpulse:
+    wait 1 irq 2
+    jmp y-- syncpulse
+
+mov y, isr side 1
+
+backporch:
+    wait 1 irq 2
+    jmp y-- backporch
+
+.wrap

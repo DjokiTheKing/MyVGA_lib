@@ -1,0 +1,31 @@
+.program vsync_720p
+.side_set 1 opt
+
+.wrap_target
+
+mov x, osr
+active:
+    wait 1 irq 2
+    irq 1
+    jmp x-- active
+
+set y, 5
+frontporch:
+    wait 1 irq 2
+    jmp y-- frontporch
+
+
+set y, 4 side 1
+irq 0
+
+syncpulse:
+    wait 1 irq 2
+    jmp y-- syncpulse
+
+set y, 18 side 0
+
+backporch:
+    wait 1 irq 2
+    jmp y-- backporch
+
+.wrap

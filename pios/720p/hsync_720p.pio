@@ -1,0 +1,20 @@
+.program hsync_720p
+
+.wrap_target         
+mov x, osr
+activeporch:
+   jmp x-- activeporch
+
+; SYNC PULSE 
+pulse:
+    set pins, 1 [31]
+    set pins, 1 [7]
+
+set pins, 0 [3]
+
+set y, 13
+
+backporch:
+    jmp y-- backporch [14]
+    irq 2 [3]
+.wrap
