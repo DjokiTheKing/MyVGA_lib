@@ -129,7 +129,7 @@ vsync_ready(false)
         static_assert(_bits_per_pixel == 1 || _bits_per_pixel == 4, "Invalid _bits_per_pixel: currnetly only 1 and 4 is supported.");
     }
 
-    if constexpr(closest_res == 0){
+    if constexpr(closest_res == MAX_RES_640X480){
         H_ACTIVEPORCH = supported_base_resolutions[closest_res].H_ACTIVEPORCH-1;
         V_ACTIVE = supported_base_resolutions[closest_res].V_ACTIVE-1;
 
@@ -140,7 +140,7 @@ vsync_ready(false)
         vsync_program = vsync_480p_program;
         vsync_wrap_target = vsync_480p_wrap_target;
         vsync_wrap = vsync_480p_wrap;
-    }else if constexpr(closest_res == 1){
+    }else if constexpr(closest_res == MAX_RES_800X600){
         H_ACTIVEPORCH = supported_base_resolutions[closest_res].H_ACTIVEPORCH-1;
         V_ACTIVE = supported_base_resolutions[closest_res].V_ACTIVE-1;
 
@@ -151,7 +151,7 @@ vsync_ready(false)
         vsync_program = vsync_600p_program;
         vsync_wrap_target = vsync_600p_wrap_target;
         vsync_wrap = vsync_600p_wrap;
-    }else if constexpr(closest_res == 2){
+    }else if constexpr(closest_res == MAX_RES_1024X768){
         H_ACTIVEPORCH = supported_base_resolutions[closest_res].H_ACTIVEPORCH-1;
         V_ACTIVE = supported_base_resolutions[closest_res].V_ACTIVE-1;
 
@@ -162,7 +162,7 @@ vsync_ready(false)
         vsync_program = vsync_768p_program;
         vsync_wrap_target = vsync_768p_wrap_target;
         vsync_wrap = vsync_768p_wrap;
-    }else if constexpr(closest_res == 3){
+    }else if constexpr(closest_res == MAX_RES_1280X720){
         H_ACTIVEPORCH = supported_base_resolutions[closest_res].H_ACTIVEPORCH-1;
         V_ACTIVE = supported_base_resolutions[closest_res].V_ACTIVE-1;
 
@@ -173,7 +173,29 @@ vsync_ready(false)
         vsync_program = vsync_720p_program;
         vsync_wrap_target = vsync_720p_wrap_target;
         vsync_wrap = vsync_720p_wrap;
-    }else if constexpr(closest_res == 4){
+    }else if constexpr(closest_res == MAX_RES_1366X768){
+        H_ACTIVEPORCH = supported_base_resolutions[closest_res].H_ACTIVEPORCH-1;
+        V_ACTIVE = supported_base_resolutions[closest_res].V_ACTIVE-1;
+
+        hsync_program = hsync_768p_16x9_program;
+        hsync_wrap_target = hsync_768p_16x9_wrap_target;
+        hsync_wrap = hsync_768p_16x9_wrap;
+
+        vsync_program = vsync_768p_16x9_program;
+        vsync_wrap_target = vsync_768p_16x9_wrap_target;
+        vsync_wrap = vsync_768p_16x9_wrap;
+    }else if constexpr(closest_res == MAX_RES_1600X900){
+        H_ACTIVEPORCH = supported_base_resolutions[closest_res].H_ACTIVEPORCH-1;
+        V_ACTIVE = supported_base_resolutions[closest_res].V_ACTIVE-1;
+
+        hsync_program = hsync_900p_program;
+        hsync_wrap_target = hsync_900p_wrap_target;
+        hsync_wrap = hsync_900p_wrap;
+
+        vsync_program = vsync_900p_program;
+        vsync_wrap_target = vsync_900p_wrap_target;
+        vsync_wrap = vsync_900p_wrap;
+    }else if constexpr(closest_res == MAX_RES_1920X1080){
         H_ACTIVEPORCH = supported_base_resolutions[closest_res].H_ACTIVEPORCH-1;
         V_ACTIVE = supported_base_resolutions[closest_res].V_ACTIVE-1;
 
@@ -194,7 +216,7 @@ vsync_ready(false)
         front_buffer = &frame_buffer[0];
         back_buffer = &frame_buffer[0];
     }
-    vga_address_pointer = &front_buffer[0];
+    buffer_pointer = &front_buffer[self->TXCOUNT];
 }
 
 template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
@@ -275,6 +297,14 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::ini
         pio_sm_put_blocking(pio_vga, vsync_sm, 32);
         pio_sm_exec(pio_vga, vsync_sm, pio_encode_pull(false, true));
         pio_sm_exec(pio_vga, vsync_sm, pio_encode_out(pio_isr, 32));
+    }else if(H_ACTIVEPORCH == 1623){
+        pio_sm_put_blocking(pio_vga, vsync_sm, 94);
+        pio_sm_exec(pio_vga, vsync_sm, pio_encode_pull(false, true));
+        pio_sm_exec(pio_vga, vsync_sm, pio_encode_out(pio_isr, 32));
+    }else if(H_ACTIVEPORCH == 1379){
+        pio_sm_put_blocking(pio_vga, vsync_sm, 26);
+        pio_sm_exec(pio_vga, vsync_sm, pio_encode_pull(false, true));
+        pio_sm_exec(pio_vga, vsync_sm, pio_encode_out(pio_isr, 32));
     }
 
     pio_sm_put_blocking(pio_vga, vsync_sm, V_ACTIVE);
@@ -348,7 +378,7 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::ini
 
 
     dma_chan_primary = dma_claim_unused_channel(true);
-    // dma_chan_reset = dma_claim_unused_channel(true);
+    dma_chan_reset = dma_claim_unused_channel(true);
 
     dma_channel_config primary_config = dma_channel_get_default_config(dma_chan_primary);
 
@@ -357,7 +387,7 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::ini
     channel_config_set_write_increment(&primary_config, false);                    
     channel_config_set_dreq(&primary_config, target_dreq) ;                               
     channel_config_set_high_priority(&primary_config, true);
-    // channel_config_set_chain_to(&primary_config, dma_chan_reset);
+    channel_config_set_chain_to(&primary_config, dma_chan_reset);
     dma_channel_configure(
         dma_chan_primary,                
         &primary_config,                      
@@ -367,20 +397,21 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::ini
         false                    
     );
 
-    // dma_channel_config reset_config = dma_channel_get_default_config(dma_chan_reset);
-    // channel_config_set_transfer_data_size(&reset_config, DMA_SIZE_32);             
-    // channel_config_set_read_increment(&reset_config, false);                        
-    // channel_config_set_write_increment(&reset_config, false);                               
-    // channel_config_set_high_priority(&reset_config, true);
-    // channel_config_set_chain_to(&reset_config, dma_chan_primary);
-    // dma_channel_configure(
-    //     dma_chan_reset,                
-    //     &reset_config,                      
-    //     &dma_hw->ch[dma_chan_primary].read_addr,         
-    //     &vga_address_pointer,            
-    //     1,                    
-    //     false                    
-    // ); 
+    dma_channel_config reset_config = dma_channel_get_default_config(dma_chan_reset);
+
+    channel_config_set_transfer_data_size(&reset_config, DMA_SIZE_32);             
+    channel_config_set_read_increment(&reset_config, false);                        
+    channel_config_set_write_increment(&reset_config, false);             
+    channel_config_set_high_priority(&reset_config, true);
+    channel_config_set_chain_to(&reset_config, dma_chan_primary);
+    dma_channel_configure(
+        dma_chan_reset,                
+        &reset_config,                      
+        &dma_hw->ch[dma_chan_primary].read_addr,         
+        &buffer_pointer,            
+        1,                    
+        false                    
+    );
 
     dma_channel_set_irq0_enabled(dma_chan_primary, true);
 
@@ -464,6 +495,90 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::fil
 }
 
 template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
+inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::drawLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, ColorType color)
+{
+    int16_t dx = abs((int16_t)x1 - (int16_t)x0);
+    int16_t sx = (x0 < x1) ? 1 : -1;
+    int16_t dy = -abs((int16_t)y1 - (int16_t)y0);
+    int16_t sy = (y0 < y1) ? 1 : -1;
+    int16_t err = dx + dy;
+
+    while (1) {
+        drawPixel(x0, y0, color);
+        if (x0 == x1 && y0 == y1) break;
+        int16_t e2 = 2 * err;
+        if (e2 >= dy) {
+            err += dy;
+            x0 += sx;
+        }
+        if (e2 <= dx) {
+            err += dx;
+            y0 += sy;
+        }
+    }
+}
+
+template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
+inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::drawCircle(uint16_t x, uint16_t y, uint16_t radius, ColorType color)
+{
+    drawPixel(x, y+radius, color);
+    drawPixel(x, y+radius, color);
+    drawPixel(x, y-radius, color);
+    drawPixel(x, y-radius, color);
+    drawPixel(x+radius, y, color);
+    drawPixel(x-radius, y, color);
+    drawPixel(x+radius, y, color);
+    drawPixel(x-radius, y, color);
+
+    short xt = 0, yt = radius;
+    int d = 3 - 2 * radius;
+
+    while (yt >= xt) {
+        if (d > 0) {
+            yt--; 
+            d = d + 4 * (xt - yt) + 10;
+        }
+        else d = d + 4 * xt + 6;
+
+        xt++;
+
+        drawPixel(x+xt, y+yt, color);
+        drawPixel(x-xt, y+yt, color);
+        drawPixel(x+xt, y-yt, color);
+        drawPixel(x-xt, y-yt, color);
+        drawPixel(x+yt, y+xt, color);
+        drawPixel(x-yt, y+xt, color);
+        drawPixel(x+yt, y-xt, color);
+        drawPixel(x-yt, y-xt, color);
+    }
+}
+
+template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
+inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::fillCircle(uint16_t x, uint16_t y, uint16_t radius, ColorType color)
+{
+    drawVerticalLine(x, y-radius, 2*radius+1, color);   
+    short f     = 1 - radius;
+    short ddF_x = 1;
+    short ddF_y = -2 * radius;
+    short xt     = 0;
+    short yt     = radius;  
+    while (xt<yt) {
+      if (f >= 0) {
+        yt--;
+        ddF_y += 2;
+        f     += ddF_y;
+      }
+      xt++;
+      ddF_x += 2;
+      f     += ddF_x;
+      drawVerticalLine(x+xt, y-yt, 2*yt+1, color, 1);
+      drawVerticalLine(x+yt, y-xt, 2*xt+1, color, 1);
+      drawVerticalLine(x-xt, y-yt, 2*yt+1, color, 1);
+      drawVerticalLine(x-yt, y-xt, 2*xt+1, color, 1);
+    }
+}
+
+template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
 inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::clearDisplay()
 {
     memset_volatile(back_buffer, 0, frame_buffer_size*sizeof(uint8_t));
@@ -481,12 +596,62 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::wai
 }
 
 template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
+inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::setFont(Font *font)
+{
+    current_font = font;
+}
+
+template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
+inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::setCursor(uint16_t x, uint16_t y)
+{
+    cursor_x = x;
+    cursor_y = y;
+}
+
+template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
+inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::setTextColor(ColorType color)
+{
+    text_color = color;
+}
+
+template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
+inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::print(const std::string &text)
+{
+    if(current_font != nullptr){
+        for(uint16_t i = 0; i < text.length(); ++i){
+            uint8_t* char_pointer = (uint8_t*)(current_font->get_char(uint16_t(text[i])));
+            for(uint16_t y = 0; y < 8; ++y){
+                for(uint16_t x = cursor_x+7, bit = 0; x >= cursor_x; --x, bit++){
+                    if(((*char_pointer)>>bit) & 1){
+                        drawPixel(x, cursor_y+y, text_color);
+                    }
+                }
+                char_pointer++;
+            }
+            cursor_x += 8;
+        }
+    }
+}
+
+template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
 inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::dma_IRQ0_handeler()
 {
     dma_hw->ints0 = (1u << self->dma_chan_primary);
     self->currentScanLine++;
     if (self->currentScanLine <= self->V_ACTIVE) {
-        dma_channel_set_read_addr(self->dma_chan_primary, &self->front_buffer[self->TXCOUNT * (self->currentScanLine / self->line_divisor)], true);
+        self->buffer_pointer = &self->front_buffer[self->TXCOUNT * (self->currentScanLine / self->line_divisor)];
+    }else{
+        if constexpr(_num_buffers > 1){
+            if(self->vsync_ready){
+                self->tmp_buffer = self->back_buffer;
+                self->back_buffer = self->front_buffer;
+                self->front_buffer = self->tmp_buffer;
+                self->vsync_ready = false;
+            }
+        }else{
+            self->vsync_ready = false;
+        }
+        self->buffer_pointer = &self->front_buffer[self->TXCOUNT * ((self->currentScanLine - self->V_ACTIVE - 1) / self->line_divisor)];
     }
 }
 
@@ -494,18 +659,7 @@ template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t 
 inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::pio_IRQ0_handeler()
 {
     pio_interrupt_clear(self->pio_vga, 0);
-    self->currentScanLine = 0;
-    if constexpr(_num_buffers > 1){
-        if(self->vsync_ready){
-            self->tmp_buffer = self->back_buffer;
-            self->back_buffer = self->front_buffer;
-            self->front_buffer = self->tmp_buffer;
-            self->vsync_ready = false;
-        }
-    }else{
-        self->vsync_ready = false;
-    }
-    dma_channel_set_read_addr(self->dma_chan_primary, &self->front_buffer[self->TXCOUNT * (self->currentScanLine / self->line_divisor)], true);
+    self->currentScanLine = 1;
 }
 
 template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>

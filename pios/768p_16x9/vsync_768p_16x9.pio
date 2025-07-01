@@ -1,0 +1,28 @@
+.program vsync_768p_16x9
+.side_set 1 opt
+
+.wrap_target
+
+mov x, osr
+active:
+    wait 1 irq 2
+    irq 1
+    jmp x-- active
+
+frontporch:
+    wait 1 irq 2
+    wait 1 irq 2
+
+set y, 2 side 1
+irq 0
+syncpulse:
+    wait 1 irq 2
+    jmp y-- syncpulse
+
+mov y, isr side 0
+
+backporch:
+    wait 1 irq 2
+    jmp y-- backporch
+
+.wrap

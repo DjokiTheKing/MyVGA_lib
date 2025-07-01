@@ -1,0 +1,20 @@
+.program hsync_900p
+
+.wrap_target         
+mov x, osr
+activeporch:
+   jmp x-- activeporch
+
+set pins, 1 [8]
+set y, 6
+pulse:
+    jmp y-- pulse [9]
+
+set pins, 0 [3]
+
+set y, 8 [5]
+
+backporch:
+    jmp y-- backporch [8]
+    irq 2 [3]
+.wrap

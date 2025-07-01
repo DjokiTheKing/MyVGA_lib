@@ -14,6 +14,7 @@ endforeach()
 
 target_include_directories(MyVGA_lib PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/headers
+    ${CMAKE_CURRENT_LIST_DIR}/fonts
 )
 
 target_link_libraries(MyVGA_lib PUBLIC 

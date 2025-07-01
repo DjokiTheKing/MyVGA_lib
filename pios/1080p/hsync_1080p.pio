@@ -7,10 +7,10 @@ activeporch:
 
 ; SYNC PULSE 
 pulse:
-    set pins, 0 [31]
-    set pins, 0 [11]
+    set pins, 1 [31]
+    set pins, 1 [11]
 
-set pins, 1 [1]
+set pins, 0 [1]
 
 set y, 13
 
