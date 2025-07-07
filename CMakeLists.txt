@@ -9,7 +9,7 @@ add_library(MyVGA_lib STATIC
 file(GLOB_RECURSE PIO_FILES "${CMAKE_CURRENT_LIST_DIR}/pios/*.pio")
 
 foreach(FILE_PATH ${PIO_FILES})
-    pico_generate_pio_header(MyVGA ${FILE_PATH})
+    pico_generate_pio_header(MyVGA_lib ${FILE_PATH})
 endforeach()
 
 target_include_directories(MyVGA_lib PUBLIC
