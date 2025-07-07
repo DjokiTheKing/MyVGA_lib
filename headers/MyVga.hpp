@@ -592,7 +592,7 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::wai
 }
 
 template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
-inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::__not_in_flash_func(copy_back_to_front)()
+inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::copy_back_to_front()
 {
     memcpy_volatile(front_buffer, back_buffer, frame_buffer_size*sizeof(uint8_t));
 }
@@ -686,7 +686,7 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::mem
 }
 
 template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
-inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::__not_in_flash_func(memcpy_volatile)(volatile unsigned char *d, volatile unsigned char *s, unsigned int n)
+inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::memcpy_volatile(volatile unsigned char *d, volatile unsigned char *s, unsigned int n)
 {
     volatile unsigned char *ps = s, *ds = d;
     while (n-- > 0) {
