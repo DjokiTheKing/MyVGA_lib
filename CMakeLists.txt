@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.13)
-project(MyVGA_lib)
+project(MyVGA_lib C CXX ASM)
 
 add_library(MyVGA_lib STATIC
     ${CMAKE_CURRENT_LIST_DIR}/headers/MyVga.h

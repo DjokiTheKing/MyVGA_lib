@@ -211,6 +211,10 @@ class MyVga{
         /// @brief If using FreeRTOS call this inside a task.
         void __not_in_flash_func(wait_for_Vsync)();
 
+
+        /// @brief Copies contents of the backbuffer to the front buffer
+        void __not_in_flash_func(copy_back_to_front)();
+
         /// @brief Set the font 
         /// @param font pointer to a font object
         void setFont(Font* font);
@@ -283,6 +287,7 @@ class MyVga{
 
         void __not_in_flash_func(memset_volatile)(volatile unsigned char *s, unsigned char c, unsigned int n);
         void __not_in_flash_func(memset_volatile)(volatile unsigned char *s, unsigned char c, unsigned int n, unsigned int offset);
+        void __not_in_flash_func(memcpy_volatile)(volatile unsigned char *d, volatile unsigned char *s, unsigned int n);
 
         constexpr uint64_t vector_dot(uint64_t x, uint64_t y){ return x*x+y*y; }
         constexpr uint8_t find_best_resolution_match();

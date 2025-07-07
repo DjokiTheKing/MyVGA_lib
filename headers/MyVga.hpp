@@ -34,18 +34,18 @@ vsync_ready(false)
     // static_assert(closest_res < 0, "test");
     // static_assert(divisor < 0, "test");
 
-    static_assert(check_if_exact_resolution(closest_res, divisor), "Invalid resolution: must be an exact quotient of a base resolution. (Check MaxDisplayResolutions)");
+    static_assert(check_if_exact_resolution(closest_res, divisor), "Invalid resolution: must be an exact quotient of a base resolution. (Check MaxDisplayResolutions)\n");
 
     constexpr uint8_t clock_divisor = find_clock_divisor(supported_base_resolutions[closest_res].PIXEL_CLOCK);
 
-    static_assert(clock_divisor > 0, "Unsupported system clock: system clock must be a multiple of the targeted pixel clock. +- 0.5%");
+    static_assert(clock_divisor > 0, "Unsupported system clock: system clock must be a multiple of the targeted pixel clock. +- 0.5%\n");
 
     constexpr uint8_t rgb_clock_divisor = find_rgb_clock_divisor(clock_divisor, divisor);
-    static_assert(rgb_clock_divisor > 0, "Unsupported system clock: minimum pixel time is 3 clocks, if using pixel density of more than 1/3 of the resolution the system clock must be at least double of the pixel clock.");
+    static_assert(rgb_clock_divisor > 0, "Unsupported system clock: If using 1/2 of a base resolution(width/2 and height/2), the system clock must be 4x pixel clock for that resolution. If using a base resolution directly, the system clock must either be 3x or 4x the pixel clock for that resolution.\n");
     
     constexpr uint8_t clocks_per_pixel = find_rgb_clocks_per_pixel(clock_divisor, divisor);
 
-    static_assert(clocks_per_pixel > 0, "test");
+    // static_assert(clocks_per_pixel > 0, "test");
     
     hsync_clock_divider = clock_divisor;
     vsync_clock_divider = clock_divisor;
@@ -86,8 +86,6 @@ vsync_ready(false)
                 rgb_wrap_target = rgb_x3_1bpp_05x_wrap_target;
                 rgb_wrap = rgb_x3_1bpp_05x_wrap;
             }
-        }else{
-            static_assert(false, "Unsupported system clock: minimum pixel time is 3 clocks, if using pixel density of more than 1/3 of the resolution the system clock must be at least double of the pixel clock.");
         }
     }else if constexpr(_bits_per_pixel == 4){
         if constexpr(clocks_per_pixel == 4){
@@ -122,8 +120,6 @@ vsync_ready(false)
                 rgb_wrap_target = rgb_x3_4bpp_05x_wrap_target;
                 rgb_wrap = rgb_x3_4bpp_05x_wrap;
             }
-        }else{
-            static_assert(false, "Unsupported system clock: minimum pixel time is 3 clocks, if using pixel density of more than 1/3 of the resolution the system clock must be at least double of the pixel clock.");
         }
     }else{
         static_assert(_bits_per_pixel == 1 || _bits_per_pixel == 4, "Invalid _bits_per_pixel: currnetly only 1 and 4 is supported.");
@@ -426,8 +422,8 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::ini
 template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
 inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::drawPixel(uint16_t x, uint16_t y, ColorType color)
 {
-    if(x < 0 || x >= display_width) return;
-    if(y < 0 || y >= display_height) return;
+    if(x >= display_width) return;
+    if(y >= display_height) return;
     
     if constexpr (_bits_per_pixel == 1){
         const uint32_t pixel_pos = (y*display_width)+x;
@@ -596,6 +592,12 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::wai
 }
 
 template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
+inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::__not_in_flash_func(copy_back_to_front)()
+{
+    memcpy_volatile(front_buffer, back_buffer, frame_buffer_size*sizeof(uint8_t));
+}
+
+template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
 inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::setFont(Font *font)
 {
     current_font = font;
@@ -619,6 +621,8 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::pri
 {
     if(current_font != nullptr){
         for(uint16_t i = 0; i < text.length(); ++i){
+            if(cursor_x >= display_width) break;
+            if(cursor_y >= display_height) break;
             uint8_t* char_pointer = (uint8_t*)(current_font->get_char(uint16_t(text[i])));
             for(uint16_t y = 0; y < 8; ++y){
                 for(uint16_t x = cursor_x+7, bit = 0; x >= cursor_x; --x, bit++){
@@ -678,6 +682,15 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::mem
     while (n-- > 0) {
         *p = c;
         p += offset;
+    }
+}
+
+template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
+inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::__not_in_flash_func(memcpy_volatile)(volatile unsigned char *d, volatile unsigned char *s, unsigned int n)
+{
+    volatile unsigned char *ps = s, *ds = d;
+    while (n-- > 0) {
+        *ds = *ps;
     }
 }
 
