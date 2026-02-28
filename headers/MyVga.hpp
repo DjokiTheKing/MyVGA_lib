@@ -256,6 +256,7 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::ini
 
     sm_config_set_wrap(&rgb_sm_config, rgb_offset + rgb_wrap_target, rgb_offset + rgb_wrap);
     sm_config_set_clkdiv(&rgb_sm_config, rgb_clock_divider);
+    sm_config_set_fifo_join(&rgb_sm_config, PIO_FIFO_JOIN_TX);
 
     if constexpr(_bits_per_pixel == 4){
         sm_config_set_set_pins(&rgb_sm_config, _start_pin+2, 4);
@@ -309,69 +310,15 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::ini
     pio_sm_put_blocking(pio_vga, rgb_sm, RGB_ACTIVE);
     pio_sm_exec(pio_vga, rgb_sm, pio_encode_pull(false, true));
     pio_sm_exec(pio_vga, rgb_sm, pio_encode_out(pio_isr, 32));
-    
-    int target_dreq, target_irq;
-    if constexpr(_pio_num == 0){
-        target_irq = PIO0_IRQ_0;
-        switch(rgb_sm){
-            case 0:
-            target_dreq = DREQ_PIO0_TX0;
-                break;
-            case 1:
-            target_dreq = DREQ_PIO0_TX1;
-                break;
-            case 2:
-            target_dreq = DREQ_PIO0_TX2;
-                break;
-            case 3:
-            target_dreq = DREQ_PIO0_TX3;
-                break;
-        }
-    }else if constexpr (_pio_num == 1){
-        target_irq = PIO1_IRQ_0;
-        switch(rgb_sm){
-            case 0:
-            target_dreq = DREQ_PIO1_TX0;
-                break;
-            case 1:
-            target_dreq = DREQ_PIO1_TX1;
-                break;
-            case 2:
-            target_dreq = DREQ_PIO1_TX2;
-                break;
-            case 3:
-            target_dreq = DREQ_PIO1_TX2;
-                break;
-        }
-    }
-    #ifdef PICO_RP2350
-    else if(_pio_num == 2){
-        target_irq = PIO2_IRQ_0;
-        switch(rgb_sm){
-            case 0:
-            target_dreq = DREQ_PIO2_TX0;
-                break;
-            case 1:
-            target_dreq = DREQ_PIO2_TX1;
-                break;
-            case 2:
-            target_dreq = DREQ_PIO2_TX2;
-                break;
-            case 3:
-            target_dreq = DREQ_PIO2_TX2;
-                break;
-        }
-    }
-    #endif 
-    else{
-        static_assert(false, "pio chosen doesn't exist");
-    }
+
     pio_set_irq0_source_enabled(pio_vga, pis_interrupt0, true);
 
-    irq_add_shared_handler(target_irq, pio_IRQ0_handeler, 0);
+    int target_dreq, target_irq;
+    target_irq = pio_get_irq_num(pio_vga, 0);
+
+    irq_add_shared_handler(pio_get_irq_num(pio_vga, 0), pio_IRQ0_handeler, 0);
     irq_set_enabled(target_irq, true);
     irq_set_priority(target_irq, 0);
-
 
     dma_chan_primary = dma_claim_unused_channel(true);
     dma_chan_reset = dma_claim_unused_channel(true);
@@ -381,7 +328,7 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::ini
     channel_config_set_transfer_data_size(&primary_config, DMA_SIZE_8);             
     channel_config_set_read_increment(&primary_config, true);                        
     channel_config_set_write_increment(&primary_config, false);                    
-    channel_config_set_dreq(&primary_config, target_dreq) ;                               
+    channel_config_set_dreq(&primary_config, pio_get_dreq(pio_vga, rgb_sm, true));                               
     channel_config_set_high_priority(&primary_config, true);
     channel_config_set_chain_to(&primary_config, dma_chan_reset);
     dma_channel_configure(

@@ -93,7 +93,7 @@ struct Color<1> {
     uint8_t r, g, b;
 
     uint8_t __not_in_flash_func(return_color)(){
-        if(r > 126 || g > 126 || b > 126) return 1;
+        if(r > 16 || g > 16 || b > 16) return 1;
         else return 0;
     }
 };
