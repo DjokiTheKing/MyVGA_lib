@@ -1,18 +1,14 @@
 .program rgb_x3_1bpp
-.side_set 1 opt
 .wrap_target
 
+out pins, 1
+out NULL, 31
 mov x, isr
-wait 1 irq 1 side 0 [2]
+
+wait 1 irq 1 [3]
 
 colorout:
-	pull block
 	out pins, 1 [1]
-	set y, 5
-	pins_return:
-		out pins, 1 [1]
-		jmp y-- pins_return
-	out pins, 1
 	jmp x-- colorout
 
 .wrap

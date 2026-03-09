@@ -1,15 +1,14 @@
 .program rgb_x4_8bpp
 .wrap_target
 
-out NULL, 32
 out pins, 8
+out NULL, 24
 mov x, isr
 
-wait 1 irq 1 [2]
+wait 1 irq 1 [3]
 
 colorout:
-	pull block
-	out pins, 8	[1]
+	out pins, 8	[2]
 	jmp x-- colorout
 
 .wrap

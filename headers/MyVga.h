@@ -154,7 +154,7 @@ class MyVga{
         /// @brief ColorType for this instance with this many bits per pixel
         using ColorType = Color<_bits_per_pixel>;
 
-        /// @brief Initialize the class with the first pin for vga, pin order: hsync, vsync, green, blue, red; First go the low order bits then high
+        /// @brief Initialize the class with the first pin for vga, pin order: hsync, vsync, blue, green, red; First go the low order bits then high
         /// @param start_pin first of the pins (hsync pin)
         MyVga(uint8_t start_pin);
 
@@ -251,13 +251,13 @@ class MyVga{
         /// @param text text
         void __not_in_flash_func(print)(const std::string& text);
 
-        static constexpr uint16_t display_width = (_width >> (_bits_per_pixel == 1 ? 3 : 1))<<(_bits_per_pixel == 1 ? 3 : 1);
+        static constexpr uint16_t display_width = (_width / ((8/_bits_per_pixel)*4))*((8/_bits_per_pixel)*4);
         static constexpr uint16_t display_height = _height;
 
     private: // private Variables
-        uint8_t frame_buffer[_height*_width*_bits_per_pixel/8*_num_buffers];
+        uint8_t frame_buffer[display_height*((display_width*_bits_per_pixel/8) + 4)*_num_buffers] = { 0 };
         
-        const uint32_t frame_buffer_size = (_height*_width*_bits_per_pixel/8);
+        const uint32_t frame_buffer_size = (display_height*((display_width*_bits_per_pixel/8) + 4));
 
         volatile uint8_t *back_buffer, *front_buffer, *tmp_buffer;
         volatile uint8_t *buffer_pointer;
@@ -280,8 +280,8 @@ class MyVga{
         uint8_t hsync_wrap, vsync_wrap, rgb_wrap;
         uint8_t hsync_clock_divider, vsync_clock_divider, rgb_clock_divider;
 
-        const uint32_t TXCOUNT = _width*_bits_per_pixel/8;
-        const uint32_t RGB_ACTIVE = TXCOUNT-1;
+        static constexpr uint32_t TXCOUNT = display_width*_bits_per_pixel/8+4;
+        static constexpr uint32_t RGB_ACTIVE = display_width-1;
 
         struct vga_resolution{
             uint32_t width, height, H_ACTIVEPORCH, V_ACTIVE, PIXEL_CLOCK;

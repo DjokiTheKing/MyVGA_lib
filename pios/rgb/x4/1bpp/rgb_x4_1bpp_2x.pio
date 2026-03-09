@@ -1,17 +1,15 @@
 .program rgb_x4_1bpp_2x
-.side_set 1 opt
+
 .wrap_target
 
-mov x, isr [1]
-wait 1 irq 1 side 0 [6]
+out pins, 1
+out NULL, 31
+mov x, isr
+
+wait 1 irq 1 [8]
 
 colorout:
-	pull block
-	set y, 6
-	pins_return:
-		out pins, 1 [2]
-		jmp y-- pins_return
-	out pins, 1
+	out pins, 1 [2]
 	jmp x-- colorout
 
 .wrap

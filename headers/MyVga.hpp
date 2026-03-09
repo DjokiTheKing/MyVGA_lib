@@ -295,6 +295,7 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::ini
     sm_config_set_wrap(&rgb_sm_config, rgb_offset + rgb_wrap_target, rgb_offset + rgb_wrap);
     sm_config_set_clkdiv(&rgb_sm_config, rgb_clock_divider);
     sm_config_set_fifo_join(&rgb_sm_config, PIO_FIFO_JOIN_TX);
+    sm_config_set_out_shift(&rgb_sm_config, true, true, 32);
 
     if constexpr(_bits_per_pixel == 8){
         sm_config_set_out_pins(&rgb_sm_config, _start_pin+2, 8);
@@ -337,18 +338,16 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::ini
 
         
         gpio_set_slew_rate(_start_pin+2, GPIO_SLEW_RATE_FAST);
-        gpio_set_drive_strength(_start_pin+2, GPIO_DRIVE_STRENGTH_12MA);
+        gpio_set_drive_strength(_start_pin+2, GPIO_DRIVE_STRENGTH_8MA);
         gpio_set_slew_rate(_start_pin+3, GPIO_SLEW_RATE_FAST);
-        gpio_set_drive_strength(_start_pin+3, GPIO_DRIVE_STRENGTH_12MA);
+        gpio_set_drive_strength(_start_pin+3, GPIO_DRIVE_STRENGTH_8MA);
         gpio_set_slew_rate(_start_pin+4, GPIO_SLEW_RATE_FAST);
-        gpio_set_drive_strength(_start_pin+4, GPIO_DRIVE_STRENGTH_12MA);
+        gpio_set_drive_strength(_start_pin+4, GPIO_DRIVE_STRENGTH_8MA);
         gpio_set_slew_rate(_start_pin+5, GPIO_SLEW_RATE_FAST);
-        gpio_set_drive_strength(_start_pin+5, GPIO_DRIVE_STRENGTH_12MA);
+        gpio_set_drive_strength(_start_pin+5, GPIO_DRIVE_STRENGTH_8MA);
         
         pio_sm_set_consecutive_pindirs(pio_vga, rgb_sm, _start_pin+2, 4, true);
     }else if constexpr(_bits_per_pixel == 1){
-        sm_config_set_sideset(&rgb_sm_config, 2, true, false);
-        sm_config_set_sideset_pins(&rgb_sm_config, _start_pin+2);
         sm_config_set_set_pins(&rgb_sm_config, _start_pin+2, 1);
         sm_config_set_out_pins(&rgb_sm_config, _start_pin+2, 1);
         
@@ -406,7 +405,7 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::ini
 
     dma_channel_config primary_config = dma_channel_get_default_config(dma_chan_primary);
 
-    channel_config_set_transfer_data_size(&primary_config, DMA_SIZE_8);             
+    channel_config_set_transfer_data_size(&primary_config, DMA_SIZE_32);             
     channel_config_set_read_increment(&primary_config, true);                        
     channel_config_set_write_increment(&primary_config, false);                    
     channel_config_set_dreq(&primary_config, pio_get_dreq(pio_vga, rgb_sm, true));                               
@@ -417,7 +416,7 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::ini
         &primary_config,                      
         &pio_vga->txf[rgb_sm],         
         front_buffer,            
-        TXCOUNT,                    
+        TXCOUNT/4,                    
         false                    
     );
 
@@ -454,12 +453,12 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::dra
     if(y >= display_height) return;
     
     if constexpr (_bits_per_pixel == 1){
-        const uint32_t pixel_pos = (y*display_width)+x;
+        const uint32_t pixel_pos = (y*(display_width+32))+x+32;
 
         const uint32_t pixel_num = pixel_pos & 0b111;
         back_buffer[pixel_pos>>3] = (back_buffer[pixel_pos>>3] & ~(1<<pixel_num)) | (color.return_color() << pixel_num) ;
     }else if constexpr (_bits_per_pixel == 4){
-        const uint32_t pixel_pos = (y*display_width)+x;
+        const uint32_t pixel_pos = (y*(display_width+8))+x+8;
 
         if(pixel_pos & 1){
             back_buffer[pixel_pos>>1] = (back_buffer[pixel_pos>>1] & 0b00001111) | (color.return_color() << 4) ;
@@ -467,7 +466,7 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::dra
             back_buffer[pixel_pos>>1] = (back_buffer[pixel_pos>>1] & 0b11110000) | (color.return_color()) ;
         }
     }else if constexpr (_bits_per_pixel == 8){
-        const uint32_t pixel_pos = (y*display_width)+x;
+        const uint32_t pixel_pos = (y*(display_width+4))+x+4;
         back_buffer[pixel_pos] = color.return_color();
     }
 }
