@@ -240,13 +240,13 @@ vsync_ready(false)
 
     self = this;
     if constexpr(_num_buffers == 2){
-        front_buffer = &frame_buffer[0];
-        back_buffer = &frame_buffer[frame_buffer_size];
+        front_buffer = 0;
+        back_buffer = frame_buffer_size;
     }else if constexpr(_num_buffers == 1){
-        front_buffer = &frame_buffer[0];
-        back_buffer = &frame_buffer[0];
+        front_buffer = 0;
+        back_buffer = 0;
     }
-    buffer_pointer = &front_buffer[self->TXCOUNT];
+    buffer_pointer = &frame_buffer[self->TXCOUNT];
 }
 
 template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
@@ -415,7 +415,7 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::ini
         dma_chan_primary,                
         &primary_config,                      
         &pio_vga->txf[rgb_sm],         
-        front_buffer,            
+        frame_buffer,            
         TXCOUNT/4,                    
         false                    
     );
@@ -456,18 +456,18 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::dra
         const uint32_t pixel_pos = (y*(display_width+32))+x+32;
 
         const uint32_t pixel_num = pixel_pos & 0b111;
-        back_buffer[pixel_pos>>3] = (back_buffer[pixel_pos>>3] & ~(1<<pixel_num)) | (color.return_color() << pixel_num) ;
+        frame_buffer[back_buffer+pixel_pos>>3] = (frame_buffer[back_buffer+pixel_pos>>3] & ~(1<<pixel_num)) | (color.return_color() << pixel_num) ;
     }else if constexpr (_bits_per_pixel == 4){
         const uint32_t pixel_pos = (y*(display_width+8))+x+8;
 
         if(pixel_pos & 1){
-            back_buffer[pixel_pos>>1] = (back_buffer[pixel_pos>>1] & 0b00001111) | (color.return_color() << 4) ;
+            frame_buffer[back_buffer+pixel_pos>>1] = (frame_buffer[back_buffer+pixel_pos>>1] & 0b00001111) | (color.return_color() << 4) ;
         }else{
-            back_buffer[pixel_pos>>1] = (back_buffer[pixel_pos>>1] & 0b11110000) | (color.return_color()) ;
+            frame_buffer[back_buffer+pixel_pos>>1] = (frame_buffer[back_buffer+pixel_pos>>1] & 0b11110000) | (color.return_color()) ;
         }
     }else if constexpr (_bits_per_pixel == 8){
         const uint32_t pixel_pos = (y*(display_width+4))+x+4;
-        back_buffer[pixel_pos] = color.return_color();
+        frame_buffer[back_buffer+pixel_pos] = color.return_color();
     }
 }
 
@@ -607,7 +607,7 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::fil
 template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
 inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::clearDisplay()
 {
-    memset_volatile(back_buffer, 0, frame_buffer_size*sizeof(uint8_t));
+    memset(frame_buffer+back_buffer, 0, frame_buffer_size*sizeof(uint8_t));
 }
 
 template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
@@ -624,7 +624,7 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::wai
 template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
 inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::copy_back_to_front()
 {
-    memcpy_volatile(front_buffer, back_buffer, frame_buffer_size*sizeof(uint8_t));
+    memcpy(frame_buffer+front_buffer, frame_buffer+back_buffer, frame_buffer_size*sizeof(uint8_t));
 }
 
 template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
@@ -673,7 +673,7 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::dma
     dma_hw->ints0 = (1u << self->dma_chan_primary);
     self->currentScanLine++;
     if (self->currentScanLine <= self->V_ACTIVE) {
-        self->buffer_pointer = &self->front_buffer[self->TXCOUNT * (self->currentScanLine / self->line_divisor)];
+        self->buffer_pointer = &self->frame_buffer[self->front_buffer+self->TXCOUNT * (self->currentScanLine / self->line_divisor)];
     }else{
         if constexpr(_num_buffers > 1){
             if(self->vsync_ready){
@@ -685,7 +685,7 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::dma
         }else{
             self->vsync_ready = false;
         }
-        self->buffer_pointer = &self->front_buffer[self->TXCOUNT * ((self->currentScanLine - self->V_ACTIVE - 1) / self->line_divisor)];
+        self->buffer_pointer = &self->frame_buffer[self->front_buffer+self->TXCOUNT * ((self->currentScanLine - self->V_ACTIVE - 1) / self->line_divisor)];
     }
 }
 
@@ -694,34 +694,6 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::pio
 {
     pio_interrupt_clear(self->pio_vga, 0);
     self->currentScanLine = 1;
-}
-
-template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
-inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::memset_volatile(volatile unsigned char *s, unsigned char c, unsigned int n)
-{
-    volatile unsigned char *p = s;
-    while (n-- > 0) {
-        *p++ = c;
-    }
-}
-
-template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
-inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::memset_volatile(volatile unsigned char *s, unsigned char c, unsigned int n, unsigned int offset)
-{
-    volatile unsigned char *p = s;
-    while (n-- > 0) {
-        *p = c;
-        p += offset;
-    }
-}
-
-template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
-inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::memcpy_volatile(volatile unsigned char *d, volatile unsigned char *s, unsigned int n)
-{
-    volatile unsigned char *ps = s, *ds = d;
-    while (n-- > 0) {
-        *ds = *ps;
-    }
 }
 
 template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>

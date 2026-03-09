@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include <cstdint>
-#include <string>
+#include <cstring>
 
 #include "pico/stdlib.h"
 #include "hardware/pio.h"
@@ -255,11 +255,11 @@ class MyVga{
         static constexpr uint16_t display_height = _height;
 
     private: // private Variables
-        uint8_t frame_buffer[display_height*((display_width*_bits_per_pixel/8) + 4)*_num_buffers] = { 0 };
+        alignas(4) uint8_t frame_buffer[display_height*((display_width*_bits_per_pixel/8) + 4)*_num_buffers] = { 0 };
         
         const uint32_t frame_buffer_size = (display_height*((display_width*_bits_per_pixel/8) + 4));
 
-        volatile uint8_t *back_buffer, *front_buffer, *tmp_buffer;
+        volatile uint32_t back_buffer, front_buffer, tmp_buffer;
         volatile uint8_t *buffer_pointer;
 
         Font* current_font = nullptr;
@@ -303,10 +303,6 @@ class MyVga{
     private: // private Functions
         static void __isr __not_in_flash_func(dma_IRQ0_handeler)();
         static void __isr __not_in_flash_func(pio_IRQ0_handeler)();
-
-        void __not_in_flash_func(memset_volatile)(volatile unsigned char *s, unsigned char c, unsigned int n);
-        void __not_in_flash_func(memset_volatile)(volatile unsigned char *s, unsigned char c, unsigned int n, unsigned int offset);
-        void __not_in_flash_func(memcpy_volatile)(volatile unsigned char *d, volatile unsigned char *s, unsigned int n);
 
         constexpr uint64_t vector_dot(uint64_t x, uint64_t y){ return x*x+y*y; }
         constexpr uint8_t find_best_resolution_match();
