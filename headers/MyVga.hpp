@@ -121,8 +121,42 @@ vsync_ready(false)
                 rgb_wrap = rgb_x3_4bpp_05x_wrap;
             }
         }
+    }else if constexpr(_bits_per_pixel == 8){
+        if constexpr(clocks_per_pixel == 4){
+            if constexpr(rgb_clock_divisor == clock_divisor){
+                rgb_program = rgb_x4_8bpp_program;
+                rgb_wrap_target = rgb_x4_8bpp_wrap_target;
+                rgb_wrap = rgb_x4_8bpp_wrap;
+            }else if constexpr(rgb_clock_divisor*2 == clock_divisor){
+                rgb_program = rgb_x4_8bpp_2x_program;
+                rgb_wrap_target = rgb_x4_8bpp_2x_wrap_target;
+                rgb_wrap = rgb_x4_8bpp_2x_wrap;
+            }else if constexpr(rgb_clock_divisor*4 == clock_divisor){
+                rgb_program = rgb_x4_8bpp_4x_program;
+                rgb_wrap_target = rgb_x4_8bpp_4x_wrap_target;
+                rgb_wrap = rgb_x4_8bpp_4x_wrap;
+            }else if constexpr(rgb_clock_divisor/2 == clock_divisor){
+                rgb_program = rgb_x4_8bpp_05x_program;
+                rgb_wrap_target = rgb_x4_8bpp_05x_wrap_target;
+                rgb_wrap = rgb_x4_8bpp_05x_wrap;
+            }
+        }else if constexpr(clocks_per_pixel == 3){
+            if constexpr(rgb_clock_divisor == clock_divisor){
+                rgb_program = rgb_x3_8bpp_program;
+                rgb_wrap_target = rgb_x3_8bpp_wrap_target;
+                rgb_wrap = rgb_x3_8bpp_wrap;
+            }else if constexpr(rgb_clock_divisor*3 == clock_divisor){
+                rgb_program = rgb_x3_8bpp_3x_program;
+                rgb_wrap_target = rgb_x3_8bpp_3x_wrap_target;
+                rgb_wrap = rgb_x3_8bpp_3x_wrap;
+            }else if constexpr(rgb_clock_divisor/2 == clock_divisor){
+                rgb_program = rgb_x3_8bpp_05x_program;
+                rgb_wrap_target = rgb_x3_8bpp_05x_wrap_target;
+                rgb_wrap = rgb_x3_8bpp_05x_wrap;
+            }
+        }
     }else{
-        static_assert(_bits_per_pixel == 1 || _bits_per_pixel == 4, "Invalid _bits_per_pixel: currnetly only 1 and 4 is supported.");
+        static_assert(_bits_per_pixel == 1 || _bits_per_pixel == 4 || _bits_per_pixel == 8, "Invalid _bits_per_pixel: currnetly only 1 and 4 is supported.");
     }
 
     if constexpr(closest_res == MAX_RES_640X480){
@@ -235,6 +269,8 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::ini
     sm_config_set_clkdiv(&hsync_sm_config, hsync_clock_divider);
 
     pio_gpio_init(pio_vga, _start_pin);
+    gpio_set_slew_rate(_start_pin, GPIO_SLEW_RATE_FAST);
+    gpio_set_drive_strength(_start_pin, GPIO_DRIVE_STRENGTH_4MA);
 
     pio_sm_set_consecutive_pindirs(pio_vga, hsync_sm, _start_pin, 1, true);
     pio_sm_init(pio_vga, hsync_sm, hsync_offset, &hsync_sm_config);
@@ -248,6 +284,8 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::ini
     sm_config_set_clkdiv(&vsync_sm_config, vsync_clock_divider);
 
     pio_gpio_init(pio_vga, _start_pin+1);
+    gpio_set_slew_rate(_start_pin+1, GPIO_SLEW_RATE_FAST);
+    gpio_set_drive_strength(_start_pin+1, GPIO_DRIVE_STRENGTH_4MA);
 
     pio_sm_set_consecutive_pindirs(pio_vga, vsync_sm, _start_pin+1, 1, true);
     pio_sm_init(pio_vga, vsync_sm, vsync_offset, &vsync_sm_config);
@@ -258,7 +296,37 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::ini
     sm_config_set_clkdiv(&rgb_sm_config, rgb_clock_divider);
     sm_config_set_fifo_join(&rgb_sm_config, PIO_FIFO_JOIN_TX);
 
-    if constexpr(_bits_per_pixel == 4){
+    if constexpr(_bits_per_pixel == 8){
+        sm_config_set_out_pins(&rgb_sm_config, _start_pin+2, 8);
+        
+        pio_gpio_init(pio_vga, _start_pin+2);
+        pio_gpio_init(pio_vga, _start_pin+3);
+        pio_gpio_init(pio_vga, _start_pin+4);
+        pio_gpio_init(pio_vga, _start_pin+5);
+        pio_gpio_init(pio_vga, _start_pin+6);
+        pio_gpio_init(pio_vga, _start_pin+7);
+        pio_gpio_init(pio_vga, _start_pin+8);
+        pio_gpio_init(pio_vga, _start_pin+9);
+        
+        gpio_set_slew_rate(_start_pin+2, GPIO_SLEW_RATE_FAST);
+        gpio_set_drive_strength(_start_pin+2, GPIO_DRIVE_STRENGTH_4MA);
+        gpio_set_slew_rate(_start_pin+3, GPIO_SLEW_RATE_FAST);
+        gpio_set_drive_strength(_start_pin+3, GPIO_DRIVE_STRENGTH_4MA);
+        gpio_set_slew_rate(_start_pin+4, GPIO_SLEW_RATE_FAST); 
+        gpio_set_drive_strength(_start_pin+4, GPIO_DRIVE_STRENGTH_4MA);
+        gpio_set_slew_rate(_start_pin+5, GPIO_SLEW_RATE_FAST);
+        gpio_set_drive_strength(_start_pin+5, GPIO_DRIVE_STRENGTH_4MA);
+        gpio_set_slew_rate(_start_pin+6, GPIO_SLEW_RATE_FAST);
+        gpio_set_drive_strength(_start_pin+6, GPIO_DRIVE_STRENGTH_4MA);
+        gpio_set_slew_rate(_start_pin+7, GPIO_SLEW_RATE_FAST);
+        gpio_set_drive_strength(_start_pin+7, GPIO_DRIVE_STRENGTH_4MA);
+        gpio_set_slew_rate(_start_pin+8, GPIO_SLEW_RATE_FAST);
+        gpio_set_drive_strength(_start_pin+8, GPIO_DRIVE_STRENGTH_4MA);
+        gpio_set_slew_rate(_start_pin+9, GPIO_SLEW_RATE_FAST);
+        gpio_set_drive_strength(_start_pin+9, GPIO_DRIVE_STRENGTH_4MA);
+        
+        pio_sm_set_consecutive_pindirs(pio_vga, rgb_sm, _start_pin+2, 8, true);
+    }else if constexpr(_bits_per_pixel == 4){
         sm_config_set_set_pins(&rgb_sm_config, _start_pin+2, 4);
         sm_config_set_out_pins(&rgb_sm_config, _start_pin+2, 4);
         
@@ -266,6 +334,16 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::ini
         pio_gpio_init(pio_vga, _start_pin+3);
         pio_gpio_init(pio_vga, _start_pin+4);
         pio_gpio_init(pio_vga, _start_pin+5);
+
+        
+        gpio_set_slew_rate(_start_pin+2, GPIO_SLEW_RATE_FAST);
+        gpio_set_drive_strength(_start_pin+2, GPIO_DRIVE_STRENGTH_12MA);
+        gpio_set_slew_rate(_start_pin+3, GPIO_SLEW_RATE_FAST);
+        gpio_set_drive_strength(_start_pin+3, GPIO_DRIVE_STRENGTH_12MA);
+        gpio_set_slew_rate(_start_pin+4, GPIO_SLEW_RATE_FAST);
+        gpio_set_drive_strength(_start_pin+4, GPIO_DRIVE_STRENGTH_12MA);
+        gpio_set_slew_rate(_start_pin+5, GPIO_SLEW_RATE_FAST);
+        gpio_set_drive_strength(_start_pin+5, GPIO_DRIVE_STRENGTH_12MA);
         
         pio_sm_set_consecutive_pindirs(pio_vga, rgb_sm, _start_pin+2, 4, true);
     }else if constexpr(_bits_per_pixel == 1){
@@ -275,6 +353,9 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::ini
         sm_config_set_out_pins(&rgb_sm_config, _start_pin+2, 1);
         
         pio_gpio_init(pio_vga, _start_pin+2);
+
+        gpio_set_slew_rate(_start_pin+2, GPIO_SLEW_RATE_FAST);
+        gpio_set_drive_strength(_start_pin+2, GPIO_DRIVE_STRENGTH_12MA);
         
         pio_sm_set_consecutive_pindirs(pio_vga, rgb_sm, _start_pin+2, 1, true);
     }else{
@@ -363,7 +444,7 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::ini
     irq_set_priority(DMA_IRQ_0, 0);
 
     pio_enable_sm_mask_in_sync(pio_vga, ((1u << hsync_sm) | (1u << vsync_sm) | (1u << rgb_sm)));
-    dma_start_channel_mask((1u << dma_chan_primary)) ;
+    dma_start_channel_mask((1u << dma_chan_primary));
 }
 
 template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
@@ -385,6 +466,9 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::dra
         }else{
             back_buffer[pixel_pos>>1] = (back_buffer[pixel_pos>>1] & 0b11110000) | (color.return_color()) ;
         }
+    }else if constexpr (_bits_per_pixel == 8){
+        const uint32_t pixel_pos = (y*display_width)+x;
+        back_buffer[pixel_pos] = color.return_color();
     }
 }
 

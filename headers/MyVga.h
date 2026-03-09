@@ -45,6 +45,12 @@
 // ---------- RGB's ----------
 // ---- 4 CLOCKS PER PIXEL ---
 
+//    8 BITS PER PIXEL
+#include "rgb_x4_8bpp.pio.h" // 8 bits per pixel x1 speed
+#include "rgb_x4_8bpp_05x.pio.h" // 0.5x speed
+#include "rgb_x4_8bpp_2x.pio.h" // 2x speed
+#include "rgb_x4_8bpp_4x.pio.h" // 4x speed
+
 //    4 BITS PER PIXEL
 #include "rgb_x4_4bpp.pio.h" // 4 bits per pixel x1 speed
 #include "rgb_x4_4bpp_05x.pio.h" // 0.5x speed
@@ -58,6 +64,11 @@
 #include "rgb_x4_1bpp_4x.pio.h" // 4x speed
 
 // ---- 3 CLOCKS PER PIXEL ---
+
+//    8 BITS PER PIXEL
+#include "rgb_x3_8bpp.pio.h" // 3 clocks per pixel 8 bits per pixel
+#include "rgb_x3_8bpp_3x.pio.h" // 4 clocks per pixel 1 bit  per pixel 3x clock speed fix
+#include "rgb_x3_8bpp_05x.pio.h" // 4 clocks per pixel 1 bit  per pixel 3x clock speed fix
 
 //    4 BITS PER PIXEL
 #include "rgb_x3_4bpp.pio.h" // 3 clocks per pixel 4 bits per pixel
@@ -91,9 +102,8 @@ struct Color;
 template<>
 struct Color<1> {
     uint8_t r, g, b;
-
     uint8_t __not_in_flash_func(return_color)(){
-        if(r > 16 || g > 16 || b > 16) return 1;
+        if(r > 0 || g > 0 || b > 0) return 1;
         else return 0;
     }
 };
@@ -101,15 +111,24 @@ struct Color<1> {
 template<>
 struct Color<4> {
     uint8_t r, g, b;
-
     uint8_t __not_in_flash_func(return_color)() {
-        uint8_t res_color = 0;
-        if(r > 126) res_color |= 1 << 3;
-        if(b > 126) res_color |= 1 << 2;
-        if(g > 25 && g <= 95) res_color |= 1;
-        else if(g > 95 && g <= 171) res_color |= 1 << 1;
-        else if(g > 171) res_color |= 3;
-        return res_color;
+        uint8_t r3 = r >> 7;   // 0..7
+        uint8_t g3 = g >> 6;   // 0..7
+        uint8_t b2 = b >> 7;   // 0..3
+        // Pack into 8 bits: [r3 r3 r3 | g3 g3 g3 | b2 b2]
+        return (r3 << 3) | (g3 << 1) | b2;
+    }
+};
+
+template<>
+struct Color<8> {
+    uint8_t r, g, b;
+    uint8_t __not_in_flash_func(return_color)() {
+        uint8_t r3 = r >> 5;   // 0..7
+        uint8_t g3 = g >> 5;   // 0..7
+        uint8_t b2 = b >> 6;   // 0..3
+        // Pack into 8 bits: [r3 r3 r3 | g3 g3 g3 | b2 b2]
+        return (r3 << 5) | (g3 << 2) | b2;
     }
 };
 
