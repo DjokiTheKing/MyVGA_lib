@@ -95,39 +95,68 @@
 
 #include "Font.h"
 
+alignas(4) static const uint8_t __not_in_flash("bayer_matrix") bayer_matrix[4][4] = {
+    { 0,  8,  2, 10},
+    {12,  4, 14,  6},
+    { 3, 11,  1,  9},
+    {15,  7, 13,  5}
+};
+
 template<int _bits_per_pixel>
 struct Color;
 
 
 template<>
 struct Color<1> {
-    uint8_t r, g, b;
-    uint8_t __not_in_flash_func(return_color)(){
-        if(r > 0 || g > 0 || b > 0) return 1;
-        else return 0;
+    uint16_t r, g, b;
+    uint8_t __not_in_flash_func(return_color)(uint16_t x, uint16_t y){
+        uint16_t lum = r + g + b;
+        lum >>= 2;
+        uint8_t threshold = bayer_matrix[y & 3][x & 3] << 4;
+        return lum > threshold;
     }
 };
 
 template<>
 struct Color<4> {
-    uint8_t r, g, b;
-    uint8_t __not_in_flash_func(return_color)() {
-        uint8_t r3 = r >> 7;   // 0..7
-        uint8_t g3 = g >> 6;   // 0..7
-        uint8_t b2 = b >> 7;   // 0..3
-        // Pack into 8 bits: [r3 r3 r3 | g3 g3 g3 | b2 b2]
-        return (r3 << 3) | (g3 << 1) | b2;
+    uint16_t r, g, b;
+    uint8_t __not_in_flash_func(return_color)(uint16_t x, uint16_t y) {
+        uint16_t d = bayer_matrix[y & 3][x & 3];
+
+        uint16_t rd = r + (d << 3);
+        uint16_t gd = g + (d << 2);
+        uint16_t bd = b + (d << 3);
+
+        uint8_t r1 = rd >> 7;
+        uint8_t g2 = gd >> 6;
+        uint8_t b1 = bd >> 7;
+
+        if (r1 > 1) r1 = 1;
+        if (g2 > 3) g2 = 3;
+        if (b1 > 1) b1 = 1;
+
+        return (r1 << 3) | (g2 << 1) | b1;
     }
 };
 
 template<>
 struct Color<8> {
-    uint8_t r, g, b;
-    uint8_t __not_in_flash_func(return_color)() {
-        uint8_t r3 = r >> 5;   // 0..7
-        uint8_t g3 = g >> 5;   // 0..7
-        uint8_t b2 = b >> 6;   // 0..3
-        // Pack into 8 bits: [r3 r3 r3 | g3 g3 g3 | b2 b2]
+    uint16_t r, g, b;
+    uint8_t __not_in_flash_func(return_color)(uint16_t x, uint16_t y) {
+        uint16_t d = bayer_matrix[y & 3][x & 3];
+
+        uint16_t rd = r + (d << 1);
+        uint16_t gd = g + (d << 1);
+        uint16_t bd = b + (d << 2);
+
+        uint8_t r3 = rd >> 5;
+        uint8_t g3 = gd >> 5;
+        uint8_t b2 = bd >> 6;
+
+        if (r3 > 7) r3 = 7;
+        if (g3 > 7) g3 = 7;
+        if (b2 > 3) b2 = 3;
+
         return (r3 << 5) | (g3 << 2) | b2;
     }
 };
