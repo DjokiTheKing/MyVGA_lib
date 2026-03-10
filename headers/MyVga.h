@@ -95,25 +95,25 @@
 
 #include "Font.h"
 
-alignas(4) static const uint8_t __not_in_flash("bayer_matrix") bayer_matrix_1[16] = {
-     0<<1,  8<<1,  2<<1, 10<<1,
-    12<<1,  4<<1, 14<<1,  6<<1,
-     3<<1, 11<<1,  1<<1,  9<<1,
-    15<<1,  7<<1, 13<<1,  5<<1
+alignas(4) constexpr static const uint8_t __not_in_flash("bayer_matrix_1") bayer_matrix_1[][4] = {
+    { 0u<<1u,  8u<<1u,  2u<<1u, 10u<<1u},
+    {12u<<1u,  4u<<1u, 14u<<1u,  6u<<1u},
+    { 3u<<1u, 11u<<1u,  1u<<1u,  9u<<1u},
+    {15u<<1u,  7u<<1u, 13u<<1u,  5u<<1u}
 };
 
-alignas(4) static const uint8_t __not_in_flash("bayer_matrix") bayer_matrix_3[16] = {
-     0<<3,  8<<3,  2<<3, 10<<3,
-    12<<3,  4<<3, 14<<3,  6<<3,
-     3<<3, 11<<3,  1<<3,  9<<3,
-    15<<3,  7<<3, 13<<3,  5<<3
+alignas(4) constexpr static const uint8_t __not_in_flash("bayer_matrix_3") bayer_matrix_3[][4] = {
+    { 0u<<3u,  8u<<3u,  2u<<3u, 10u<<3u},
+    {12u<<3u,  4u<<3u, 14u<<3u,  6u<<3u},
+    { 3u<<3u, 11u<<3u,  1u<<3u,  9u<<3u},
+    {15u<<3u,  7u<<3u, 13u<<3u,  5u<<3u}
 };
 
-alignas(4) static const uint8_t __not_in_flash("bayer_matrix") bayer_matrix_4[16] = {
-     0<<4,  8<<4,  2<<4, 10<<4,
-    12<<4,  4<<4, 14<<4,  6<<4,
-     3<<4, 11<<4,  1<<4,  9<<4,
-    15<<4,  7<<4, 13<<4,  5<<4
+alignas(4) constexpr static const uint8_t __not_in_flash("bayer_matrix_4") bayer_matrix_4[][4] = {
+    { 0u<<4u,  8u<<4u,  2u<<4u, 10u<<4u},
+    {12u<<4u,  4u<<4u, 14u<<4u,  6u<<4u},
+    { 3u<<4u, 11u<<4u,  1u<<4u,  9u<<4u},
+    {15u<<4u,  7u<<4u, 13u<<4u,  5u<<4u}
 };
 
 template<int _bits_per_pixel>
@@ -128,7 +128,7 @@ struct Color<1> {
     }
     uint8_t __not_in_flash_func(return_color)(uint16_t x, uint16_t y){
         uint16_t lum = ((uint16_t(r) + uint16_t(g) + uint16_t(b))*85)>>8;
-        uint8_t threshold = bayer_matrix_4[(y & 3) << 2 | (x & 3)];
+        uint8_t threshold = bayer_matrix_4[y & 3][x & 3];
         return lum > threshold;
     }
 };
@@ -144,7 +144,7 @@ struct Color<4> {
         return (r1 << 3) | (g2 << 1) | b1;
     }
     uint8_t __not_in_flash_func(return_color)(uint16_t x, uint16_t y) {
-        uint16_t d = bayer_matrix_3[(y & 3) << 2 | (x & 3)];
+        uint16_t d = bayer_matrix_3[y & 3][x & 3];
 
         uint16_t rd = uint16_t(r) + d;
         uint16_t gd = uint16_t(g) + (d >> 1);
@@ -173,7 +173,7 @@ struct Color<8> {
         return (r3 << 5) | (g3 << 2) | b2;
     }
     uint8_t __not_in_flash_func(return_color)(uint16_t x, uint16_t y) {
-        uint16_t d = bayer_matrix_1[(y & 3) << 2 | (x & 3)];
+        uint16_t d = bayer_matrix_1[y & 3][x & 3];
 
         uint16_t rd = uint16_t(r) + d;
         uint16_t gd = uint16_t(g) + d;
