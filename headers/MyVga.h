@@ -111,7 +111,7 @@ struct Color<1> {
     uint16_t r, g, b;
     uint8_t __not_in_flash_func(return_color)(uint16_t x, uint16_t y){
         uint16_t lum = r + g + b;
-        lum >>= 2;
+        lum /= 3;
         uint8_t threshold = bayer_matrix[y & 3][x & 3] << 4;
         return lum > threshold;
     }

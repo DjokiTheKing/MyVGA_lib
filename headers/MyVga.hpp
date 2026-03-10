@@ -456,14 +456,14 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::dra
         const uint32_t pixel_pos = (y*(display_width+32))+x+32;
 
         const uint32_t pixel_num = pixel_pos & 0b111;
-        frame_buffer[back_buffer+pixel_pos>>3] = (frame_buffer[back_buffer+pixel_pos>>3] & ~(1<<pixel_num)) | (color.return_color(x, y) << pixel_num) ;
+        frame_buffer[back_buffer+(pixel_pos>>3)] = (frame_buffer[back_buffer+(pixel_pos>>3)] & ~(1<<pixel_num)) | (color.return_color(x, y) << pixel_num) ;
     }else if constexpr (_bits_per_pixel == 4){
         const uint32_t pixel_pos = (y*(display_width+8))+x+8;
 
         if(pixel_pos & 1){
-            frame_buffer[back_buffer+pixel_pos>>1] = (frame_buffer[back_buffer+pixel_pos>>1] & 0b00001111) | (color.return_color(x, y) << 4) ;
+            frame_buffer[back_buffer+(pixel_pos>>1)] = (frame_buffer[back_buffer+(pixel_pos>>1)] & 0b00001111) | (color.return_color(x, y) << 4) ;
         }else{
-            frame_buffer[back_buffer+pixel_pos>>1] = (frame_buffer[back_buffer+pixel_pos>>1] & 0b11110000) | (color.return_color(x, y)) ;
+            frame_buffer[back_buffer+(pixel_pos>>1)] = (frame_buffer[back_buffer+(pixel_pos>>1)] & 0b11110000) | (color.return_color(x, y)) ;
         }
     }else if constexpr (_bits_per_pixel == 8){
         const uint32_t pixel_pos = (y*(display_width+4))+x+4;
