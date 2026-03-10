@@ -108,9 +108,12 @@ struct Color;
 
 template<>
 struct Color<1> {
-    uint16_t r, g, b;
+    uint8_t r, g, b;
+    uint8_t __not_in_flash_func(return_color)(){
+        return (r & 0x10 | g & 0x10 | b & 0x10) ? 1u : 0u;
+    }
     uint8_t __not_in_flash_func(return_color)(uint16_t x, uint16_t y){
-        uint16_t lum = r + g + b;
+        uint16_t lum = uint16_t(r) + uint16_t(g) + uint16_t(b);
         lum /= 3;
         uint8_t threshold = bayer_matrix[y & 3][x & 3] << 4;
         return lum > threshold;
@@ -119,13 +122,20 @@ struct Color<1> {
 
 template<>
 struct Color<4> {
-    uint16_t r, g, b;
+    uint8_t r, g, b;
+    uint8_t __not_in_flash_func(return_color)() {
+        uint8_t r1 = r >> 7;
+        uint8_t g2 = g >> 6;
+        uint8_t b1 = b >> 7;
+
+        return (r1 << 3) | (g2 << 1) | b1;
+    }
     uint8_t __not_in_flash_func(return_color)(uint16_t x, uint16_t y) {
         uint16_t d = bayer_matrix[y & 3][x & 3];
 
-        uint16_t rd = r + (d << 3);
-        uint16_t gd = g + (d << 2);
-        uint16_t bd = b + (d << 3);
+        uint16_t rd = uint16_t(r) + (d << 3);
+        uint16_t gd = uint16_t(g) + (d << 2);
+        uint16_t bd = uint16_t(b) + (d << 3);
 
         uint8_t r1 = rd >> 7;
         uint8_t g2 = gd >> 6;
@@ -141,13 +151,20 @@ struct Color<4> {
 
 template<>
 struct Color<8> {
-    uint16_t r, g, b;
+    uint8_t r, g, b;
+    uint8_t __not_in_flash_func(return_color)() {
+        uint8_t r3 = r >> 5;
+        uint8_t g3 = g >> 5;
+        uint8_t b2 = b >> 6;
+
+        return (r3 << 5) | (g3 << 2) | b2;
+    }
     uint8_t __not_in_flash_func(return_color)(uint16_t x, uint16_t y) {
         uint16_t d = bayer_matrix[y & 3][x & 3];
 
-        uint16_t rd = r + (d << 1);
-        uint16_t gd = g + (d << 1);
-        uint16_t bd = b + (d << 2);
+        uint16_t rd = uint16_t(r) + (d << 1);
+        uint16_t gd = uint16_t(g) + (d << 1);
+        uint16_t bd = uint16_t(b) + (d << 2);
 
         uint8_t r3 = rd >> 5;
         uint8_t g3 = gd >> 5;
@@ -195,7 +212,7 @@ class MyVga{
         /// @param x horizontal position of the pixel
         /// @param y vertical position of the pixel
         /// @param color color of the pixel
-        void __not_in_flash_func(drawPixel)(uint16_t x, uint16_t y, ColorType color);
+        void __not_in_flash_func(drawPixel)(uint16_t x, uint16_t y, ColorType color, bool dither=false);
         
         /// @brief Draw a horizontal line with the specified (x, y) left start point, length, color and thickness
         /// @param x horizontal position of the left start point of the line
@@ -203,7 +220,7 @@ class MyVga{
         /// @param length length of the line
         /// @param color color of the line 
         /// @param thickness thickness of the line
-        void __not_in_flash_func(drawHorizontalLine)(uint16_t x, uint16_t y, uint16_t length, ColorType color, uint16_t thickness=1);
+        void __not_in_flash_func(drawHorizontalLine)(uint16_t x, uint16_t y, uint16_t length, ColorType color, uint16_t thickness=1, bool dither=false);
 
         /// @brief Draw a vertical line with the specified (x, y) top start point, length, color and thickness
         /// @param x horizontal position of the line
@@ -211,7 +228,7 @@ class MyVga{
         /// @param length length of the line
         /// @param color color of the line 
         /// @param thickness thickness of the line
-        void __not_in_flash_func(drawVerticalLine)(uint16_t x, uint16_t y, uint16_t length, ColorType color, uint16_t thickness=1);
+        void __not_in_flash_func(drawVerticalLine)(uint16_t x, uint16_t y, uint16_t length, ColorType color, uint16_t thickness=1, bool dither=false);
 
         /// @brief Draw a rectangle with top left at (x, y) with the specified width, height and color, and walls of the specified thickness
         /// @param x horizontal position of top left corner
@@ -220,7 +237,7 @@ class MyVga{
         /// @param height height of the rectangle
         /// @param color color of the rectangle 
         /// @param thickness thickness of the walls
-        void __not_in_flash_func(drawRect)(uint16_t x, uint16_t y, uint16_t width, uint16_t height, ColorType color, uint16_t thickness=1);
+        void __not_in_flash_func(drawRect)(uint16_t x, uint16_t y, uint16_t width, uint16_t height, ColorType color, uint16_t thickness=1, bool dither=false);
 
         /// @brief Draw a filled rectangle with top left at (x, y) with the specified width, height and color
         /// @param x horizontal position of top left corner
@@ -228,7 +245,7 @@ class MyVga{
         /// @param width width of the rectangle
         /// @param height height of the rectangle
         /// @param color color of the rectangle 
-        void __not_in_flash_func(fillRect)(uint16_t x, uint16_t y, uint16_t width, uint16_t height, ColorType color);
+        void __not_in_flash_func(fillRect)(uint16_t x, uint16_t y, uint16_t width, uint16_t height, ColorType color, bool dither=false);
 
         /// @brief Draw a line from x0,y0 to x1,y1 with the specified color and thickness
         /// @param x0 start x
@@ -236,21 +253,21 @@ class MyVga{
         /// @param x1 end x
         /// @param y1 end y
         /// @param color color of the line
-        void __not_in_flash_func(drawLine)(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, ColorType color);
+        void __not_in_flash_func(drawLine)(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, ColorType color, bool dither=false);
 
         /// @brief Draw a circle with the center at x0 and y0 and specified radius and color
         /// @param x center x
         /// @param y center y 
         /// @param radius radius of the circle
         /// @param color color of the circle
-        void __not_in_flash_func(drawCircle)(uint16_t x, uint16_t y, uint16_t radius, ColorType color);
+        void __not_in_flash_func(drawCircle)(uint16_t x, uint16_t y, uint16_t radius, ColorType color, bool dither=false);
 
         /// @brief Draw a filled circle with the center at x0 and y0 and specified radius and color
         /// @param x center x
         /// @param y center y 
         /// @param radius radius of the circle
         /// @param color color of the circle
-        void __not_in_flash_func(fillCircle)(uint16_t x, uint16_t y, uint16_t radius, ColorType color);
+        void __not_in_flash_func(fillCircle)(uint16_t x, uint16_t y, uint16_t radius, ColorType color, bool dither=false);
 
         /// @brief Clears the whole display (sets the color to black)
         void __not_in_flash_func(clearDisplay)();
@@ -274,7 +291,7 @@ class MyVga{
 
         /// @brief Set the text color
         /// @param color color
-        void setTextColor(ColorType color);
+        void setTextColor(ColorType color, bool dither=false);
 
         /// @brief Print the text with the currently set parameters
         /// @param text text
@@ -294,6 +311,7 @@ class MyVga{
         Font* current_font = nullptr;
         uint16_t cursor_x = 0, cursor_y = 0;
         ColorType text_color = {255,255,255};
+        bool text_dither = false;
 
         volatile uint16_t currentScanLine;
         volatile bool vsync_ready;
