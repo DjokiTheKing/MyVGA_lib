@@ -582,7 +582,7 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::dra
 template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
 inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::fillCircle(uint16_t x, uint16_t y, uint16_t radius, ColorType color, bool dither)
 {
-    drawVerticalLine(x, y-radius, 2*radius+1, color, dither);   
+    drawVerticalLine(x, y-radius, 2*radius+1, color, 1, dither);   
     short f     = 1 - radius;
     short ddF_x = 1;
     short ddF_y = -2 * radius;
