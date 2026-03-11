@@ -124,7 +124,7 @@ template<>
 struct Color<1> {
     uint8_t r, g, b;
     uint8_t __not_in_flash_func(return_color)(){
-        return (r & 0x10 | g & 0x10 | b & 0x10) ? 1u : 0u;
+        return (r > 0 || g > 0 || b > 0) ? 1u : 0u;
     }
     uint8_t __not_in_flash_func(return_color)(uint16_t x, uint16_t y){
         uint16_t lum = ((uint16_t(r) + uint16_t(g) + uint16_t(b))*85)>>8;
@@ -228,6 +228,14 @@ class MyVga{
         /// @param dither optional color dithering.
         void __not_in_flash_func(drawPixel)(uint16_t x, uint16_t y, ColorType color, bool dither=false);
         
+        /// @brief Draw a horizontal line with the specified (x, y) left start point, length, color and thickness of 1
+        /// @param x horizontal position of the left start point of the line
+        /// @param y vertical position of the line
+        /// @param length length of the line
+        /// @param color color of the line 
+        /// @param dither optional color dithering
+        void __not_in_flash_func(drawHorizontalLine)(uint16_t x, uint16_t y, uint16_t length, ColorType color, bool dither=false);
+
         /// @brief Draw a horizontal line with the specified (x, y) left start point, length, color and thickness
         /// @param x horizontal position of the left start point of the line
         /// @param y vertical position of the line
