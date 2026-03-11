@@ -402,6 +402,7 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::ini
 
     dma_chan_primary = dma_claim_unused_channel(true);
     dma_chan_reset = dma_claim_unused_channel(true);
+    dma_chan_image_flash_read = dma_claim_unused_channel(true);
 
     dma_channel_config primary_config = dma_channel_get_default_config(dma_chan_primary);
 
@@ -436,11 +437,19 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::ini
         false                    
     );
 
-    dma_channel_set_irq0_enabled(dma_chan_primary, true);
+    image_flash_read_chan_config = dma_channel_get_default_config(dma_chan_image_flash_read);
+
+    channel_config_set_read_increment(&image_flash_read_chan_config, false);
+    channel_config_set_write_increment(&image_flash_read_chan_config, true);
+    channel_config_set_high_priority(&image_flash_read_chan_config, false);
+    channel_config_set_transfer_data_size(&image_flash_read_chan_config, DMA_SIZE_32);
+    channel_config_set_dreq(&image_flash_read_chan_config, DREQ_XIP_STREAM);
+
+    dma_channel_set_irq0_enabled(dma_chan_reset, true);
 
     irq_set_exclusive_handler(DMA_IRQ_0, dma_IRQ0_handeler);
-    irq_set_enabled(DMA_IRQ_0, true);
     irq_set_priority(DMA_IRQ_0, 0);
+    irq_set_enabled(DMA_IRQ_0, true);
 
     pio_enable_sm_mask_in_sync(pio_vga, ((1u << hsync_sm) | (1u << vsync_sm) | (1u << rgb_sm)));
     dma_start_channel_mask((1u << dma_chan_primary));
@@ -448,10 +457,7 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::ini
 
 template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
 inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::drawPixel(uint16_t x, uint16_t y, ColorType color, bool dither)
-{
-    if(x >= display_width) return;
-    if(y >= display_height) return;
-    
+{   
     if constexpr (_bits_per_pixel == 1){
         const uint32_t pixel_pos = (y*(display_width+32))+x+32;
 
@@ -786,9 +792,43 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::pri
 }
 
 template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
-inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::dma_IRQ0_handeler()
+inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::draw_image_solid_from_ram(const void* image_data, uint16_t image_width, uint16_t image_height, bool dither)
 {
-    dma_hw->ints0 = (1u << self->dma_chan_primary);
+
+}
+
+template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
+void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::draw_image_solid_from_flash(const void* image_data, uint16_t image_width, uint16_t image_height, bool dither)
+{
+    uint16_t image_width_local = MIN(image_width, display_width);
+    uint16_t image_height_local = MIN(image_height, display_height);
+
+    for(int i = 0; i < image_height_local; ++i){
+        while (!(xip_ctrl_hw->stat & XIP_STAT_FIFO_EMPTY)) (void) xip_ctrl_hw->stream_fifo;
+        xip_ctrl_hw->stream_addr = (uint32_t)(image_data)+image_width*i*3;
+        xip_ctrl_hw->stream_ctr = image_width_local*3/4;
+
+        dma_channel_configure(
+            dma_chan_image_flash_read,
+            &image_flash_read_chan_config,
+            image_flash_read_line_buffer,
+            (const void *) XIP_AUX_BASE,
+            image_width_local*3/4,
+            true
+        );
+
+        dma_channel_wait_for_finish_blocking(dma_chan_image_flash_read);
+        
+        for(int j = 0; j < image_width_local; ++j){
+            drawPixel(j, i, image_flash_read_line_buffer[j], true);
+        }
+    }
+}
+
+template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
+void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::dma_IRQ0_handeler()
+{
+    dma_hw->ints0 = (1u << self->dma_chan_reset);
     self->currentScanLine++;
     if (self->currentScanLine <= self->V_ACTIVE) {
         self->buffer_pointer = &self->frame_buffer[self->front_buffer+self->TXCOUNT * (self->currentScanLine / self->line_divisor)];
@@ -808,7 +848,7 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::dma
 }
 
 template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
-inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::pio_IRQ0_handeler()
+void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::pio_IRQ0_handeler()
 {
     pio_interrupt_clear(self->pio_vga, 0);
     self->currentScanLine = 1;

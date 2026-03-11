@@ -9,6 +9,8 @@
 #include "hardware/pio.h"
 #include "hardware/dma.h"
 #include "hardware/structs/bus_ctrl.h"
+#include "hardware/regs/addressmap.h"
+#include "hardware/structs/xip_ctrl.h"
 
 // ---------- PIOS ----------
 
@@ -95,21 +97,21 @@
 
 #include "Font.h"
 
-alignas(4) constexpr static const uint8_t __not_in_flash("bayer_matrix_1") bayer_matrix_1[][4] = {
+alignas(4) constexpr static const uint8_t __not_in_flash("bayer_matrix_1") bayer_matrix_1[4][4] = {
     { 0u<<1u,  8u<<1u,  2u<<1u, 10u<<1u},
     {12u<<1u,  4u<<1u, 14u<<1u,  6u<<1u},
     { 3u<<1u, 11u<<1u,  1u<<1u,  9u<<1u},
     {15u<<1u,  7u<<1u, 13u<<1u,  5u<<1u}
 };
 
-alignas(4) constexpr static const uint8_t __not_in_flash("bayer_matrix_3") bayer_matrix_3[][4] = {
+alignas(4) constexpr static const uint8_t __not_in_flash("bayer_matrix_3") bayer_matrix_3[4][4] = {
     { 0u<<3u,  8u<<3u,  2u<<3u, 10u<<3u},
     {12u<<3u,  4u<<3u, 14u<<3u,  6u<<3u},
     { 3u<<3u, 11u<<3u,  1u<<3u,  9u<<3u},
     {15u<<3u,  7u<<3u, 13u<<3u,  5u<<3u}
 };
 
-alignas(4) constexpr static const uint8_t __not_in_flash("bayer_matrix_4") bayer_matrix_4[][4] = {
+alignas(4) constexpr static const uint8_t __not_in_flash("bayer_matrix_4") bayer_matrix_4[4][4] = {
     { 0u<<4u,  8u<<4u,  2u<<4u, 10u<<4u},
     {12u<<4u,  4u<<4u, 14u<<4u,  6u<<4u},
     { 3u<<4u, 11u<<4u,  1u<<4u,  9u<<4u},
@@ -327,11 +329,28 @@ class MyVga{
         /// @param text text
         void __not_in_flash_func(print)(const std::string& text);
 
+        /// @brief Draw a solid image from a buffer.
+        /// @param image_data pointer to the image data buffer
+        /// @param image_width width of the image
+        /// @param image_height height of the image
+        /// @param dither optional color dithering
+        /// @return 
+        void __not_in_flash_func(draw_image_solid_from_ram)(const void* image_data, uint16_t image_width, uint16_t image_height, bool dither=false);
+
+        /// @brief Draw a solid image from a buffer.
+        /// @param image_data pointer to the image data buffer
+        /// @param image_width width of the image
+        /// @param image_height height of the image
+        /// @param dither optional color dithering
+        /// @return 
+        void __no_inline_not_in_flash_func(draw_image_solid_from_flash)(const void* image_data, uint16_t image_width, uint16_t image_height, bool dither=false);
+
         static constexpr uint16_t display_width = (_width / ((8/_bits_per_pixel)*4))*((8/_bits_per_pixel)*4);
         static constexpr uint16_t display_height = _height;
 
     private: // private Variables
         alignas(4) uint8_t frame_buffer[display_height*((display_width*_bits_per_pixel/8) + 4)*_num_buffers] = { 0 };
+        alignas(4) ColorType image_flash_read_line_buffer[display_width];
         
         const uint32_t frame_buffer_size = (display_height*((display_width*_bits_per_pixel/8) + 4));
 
@@ -342,6 +361,9 @@ class MyVga{
         uint16_t cursor_x = 0, cursor_y = 0;
         ColorType text_color = {255,255,255};
         bool text_dither = false;
+
+        uint32_t dma_chan_image_flash_read;
+        dma_channel_config_t image_flash_read_chan_config;
 
         volatile uint16_t currentScanLine;
         volatile bool vsync_ready;
@@ -378,8 +400,8 @@ class MyVga{
         static inline MyVga* self;
         
     private: // private Functions
-        static void __isr __not_in_flash_func(dma_IRQ0_handeler)();
-        static void __isr __not_in_flash_func(pio_IRQ0_handeler)();
+        static void __isr __no_inline_not_in_flash_func(dma_IRQ0_handeler)();
+        static void __isr __no_inline_not_in_flash_func(pio_IRQ0_handeler)();
 
         constexpr uint64_t vector_dot(uint64_t x, uint64_t y){ return x*x+y*y; }
         constexpr uint8_t find_best_resolution_match();
