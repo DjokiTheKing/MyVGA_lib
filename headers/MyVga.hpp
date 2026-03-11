@@ -478,7 +478,35 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::dra
         for(int j = int(y)-(thickness/2)+thickness%2-1; j < y+(thickness/2); ++j)
             for(int i = x; i < (x+length); ++i) drawPixel(i, j, color, dither);
     }else{
-        for(int i = x; i < (x+length); ++i) drawPixel(i, y, color, dither);
+        if(!dither){
+            if constexpr(_bits_per_pixel == 1){
+
+            } else if constexpr(_bits_per_pixel == 4){
+                uint32_t start_pos = (y*(display_width+8))+x+8;
+                uint16_t line_end = x+length;
+
+                line_end = MIN(line_end, display_width);
+
+                if(x&1){
+                    frame_buffer[back_buffer+(start_pos>>1)] = (frame_buffer[back_buffer+(start_pos>>1)] & 0b00001111) | (color.return_color() << 4);
+                    x++;
+                    start_pos++;
+                }
+
+                if(line_end & 1){
+                    memset(frame_buffer+back_buffer+(start_pos>>1), (color.return_color() << 4)|(color.return_color()), MAX((line_end-x-1)>>1, 0));
+                    start_pos = (y*(display_width+8))+line_end+8-1;
+                    frame_buffer[back_buffer+(start_pos>>1)] = (frame_buffer[back_buffer+(start_pos>>1)] & 0b11110000) | (color.return_color());
+                }else{
+                    memset(frame_buffer+back_buffer+(start_pos>>1), (color.return_color() << 4)|(color.return_color()), MAX((line_end-x)>>1, 0));
+                }
+            } else if constexpr(_bits_per_pixel == 8){
+                const uint32_t start_pos = (y*(display_width+4))+x+4;
+                memset(frame_buffer+back_buffer+start_pos, color.return_color(), MAX(MIN(x+length, display_width)-x, 0));
+            }
+        }else{
+            for(int i = x; i < (x+length); ++i) drawPixel(i, y, color, dither);
+        }
     }
 }
 
@@ -582,25 +610,30 @@ inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::dra
 template <uint16_t _width, uint16_t _height, uint16_t _bits_per_pixel, uint16_t _num_buffers, uint8_t _pio_num>
 inline void MyVga<_width, _height, _bits_per_pixel, _num_buffers, _pio_num>::fillCircle(uint16_t x, uint16_t y, uint16_t radius, ColorType color, bool dither)
 {
-    drawVerticalLine(x, y-radius, 2*radius+1, color, 1, dither);   
+    drawHorizontalLine(x - radius, y, 2 * radius + 1, color, 1, dither);
+
     short f     = 1 - radius;
     short ddF_x = 1;
     short ddF_y = -2 * radius;
-    short xt     = 0;
-    short yt     = radius;  
-    while (xt<yt) {
-      if (f >= 0) {
-        yt--;
-        ddF_y += 2;
-        f     += ddF_y;
-      }
-      xt++;
-      ddF_x += 2;
-      f     += ddF_x;
-      drawVerticalLine(x+xt, y-yt, 2*yt+1, color, 1, dither);
-      drawVerticalLine(x+yt, y-xt, 2*xt+1, color, 1, dither);
-      drawVerticalLine(x-xt, y-yt, 2*yt+1, color, 1, dither);
-      drawVerticalLine(x-yt, y-xt, 2*xt+1, color, 1, dither);
+    short xt    = 0;
+    short yt    = radius;
+
+    while (xt < yt) {
+        if (f >= 0) {
+            yt--;
+            ddF_y += 2;
+            f     += ddF_y;
+        }
+
+        xt++;
+        ddF_x += 2;
+        f     += ddF_x;
+
+        drawHorizontalLine(x - yt, y + xt, 2 * yt + 1, color, 1, dither);
+        drawHorizontalLine(x - yt, y - xt, 2 * yt + 1, color, 1, dither);
+
+        drawHorizontalLine(x - xt, y + yt, 2 * xt + 1, color, 1, dither);
+        drawHorizontalLine(x - xt, y - yt, 2 * xt + 1, color, 1, dither);
     }
 }
 
